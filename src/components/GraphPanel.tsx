@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -25,24 +25,41 @@ const nodeTypes: NodeTypes = {
 };
 
 /**
+ * Generate node ID from path (cached version)
+ */
+function generateNodeId(path: JsonPath): string {
+  if (path.length === 0) return 'node-root';
+  return `node-${path.map((p) => String(p).replace(/[^a-zA-Z0-9]/g, '_')).join('-')}`;
+}
+
+/**
  * Check if a node should be visible based on collapse state
  * A node is visible if none of its ancestors are collapsed
+ * Uses memoization to avoid repeated path traversals
  */
 function isNodeVisible(
   nodePath: JsonPath,
-  collapsedNodes: Set<string>
+  collapsedNodes: Set<string>,
+  visibilityCache: Map<string, boolean>
 ): boolean {
+  // Check cache first
+  const cacheKey = nodePath.join('.');
+  if (visibilityCache.has(cacheKey)) {
+    return visibilityCache.get(cacheKey)!;
+  }
+
   // Check each ancestor in the path
   for (let i = 0; i < nodePath.length; i++) {
     const ancestorPath = nodePath.slice(0, i + 1);
-    const ancestorId = `node-${ancestorPath.map((p) =>
-      String(p).replace(/[^a-zA-Z0-9]/g, '_')
-    ).join('-')}`;
+    const ancestorId = generateNodeId(ancestorPath);
 
     if (collapsedNodes.has(ancestorId)) {
+      visibilityCache.set(cacheKey, false);
       return false;
     }
   }
+
+  visibilityCache.set(cacheKey, true);
   return true;
 }
 
@@ -73,30 +90,49 @@ export const GraphPanel = memo<GraphPanelProps>(({ effectiveTheme }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
 
-  // Filter nodes and edges based on collapse state
+  // Cache for visibility checks to avoid repeated path traversals
+  const visibilityCacheRef = useRef<Map<string, boolean>>(new Map());
+
+  // Clear cache when collapsed nodes change significantly
   useEffect(() => {
+    if (collapsedNodes.size === 0) {
+      visibilityCacheRef.current.clear();
+    }
+  }, [collapsedNodes.size]);
+
+  // Memoize colors to avoid recalculation
+  const colors = useMemo(
+    () => getThemeColors(effectiveTheme === 'dark'),
+    [effectiveTheme]
+  );
+
+  // Memoize expensive graph computations
+  const { nodesWithTheme, visibleEdges } = useMemo(() => {
     // Update collapse state in node data
     const nodesWithCollapseState = updateNodeCollapseState(
       storeNodes,
       collapsedNodes
     );
 
+    // Use fresh cache for this computation
+    const cache = new Map<string, boolean>();
+
     // Filter visible nodes (not descendants of collapsed nodes)
     const visibleNodes = nodesWithCollapseState.filter((node) => {
       const data = node.data as JsonNodeData;
-      return isNodeVisible(data.path, collapsedNodes);
+      return isNodeVisible(data.path, collapsedNodes, cache);
     });
 
     // Get visible node IDs
     const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
 
     // Filter edges to only those between visible nodes
-    const visibleEdges = storeEdges.filter(
+    const filteredEdges = storeEdges.filter(
       (edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
     );
 
     // Add theme to node data
-    const nodesWithTheme = visibleNodes.map((node) => ({
+    const themedNodes = visibleNodes.map((node) => ({
       ...node,
       type: 'jsonNode' as const,
       data: {
@@ -105,18 +141,22 @@ export const GraphPanel = memo<GraphPanelProps>(({ effectiveTheme }) => {
       },
     }));
 
-    setNodes(nodesWithTheme as JsonNodeType[]);
-    setEdges(visibleEdges);
-  }, [
-    storeNodes,
-    storeEdges,
-    collapsedNodes,
-    setNodes,
-    setEdges,
-    effectiveTheme,
-  ]);
+    return {
+      nodesWithTheme: themedNodes as JsonNodeType[],
+      visibleEdges: filteredEdges,
+    };
+  }, [storeNodes, storeEdges, collapsedNodes, effectiveTheme]);
 
-  const colors = getThemeColors(effectiveTheme === 'dark');
+  // Update nodes and edges only when computed values change
+  useEffect(() => {
+    // Use requestAnimationFrame for smooth rendering
+    const rafId = requestAnimationFrame(() => {
+      setNodes(nodesWithTheme);
+      setEdges(visibleEdges);
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [nodesWithTheme, visibleEdges, setNodes, setEdges]);
 
   const handleNodeClick = useCallback(
     (_: unknown, node: Node) => {

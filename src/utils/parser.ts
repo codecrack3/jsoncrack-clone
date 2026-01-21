@@ -20,11 +20,21 @@ function truncateValue(value: string): string {
 }
 
 /**
- * Generate a stable node ID from a JSON path
+ * Generate a stable node ID from a JSON path with caching
  */
+const nodeIdCache = new Map<string, string>();
+
 function generateNodeId(path: JsonPath): string {
   if (path.length === 0) return 'node-root';
-  return `node-${path.map((p) => String(p).replace(/[^a-zA-Z0-9]/g, '_')).join('-')}`;
+
+  const cacheKey = path.join('.');
+  if (nodeIdCache.has(cacheKey)) {
+    return nodeIdCache.get(cacheKey)!;
+  }
+
+  const id = `node-${path.map((p) => String(p).replace(/[^a-zA-Z0-9]/g, '_')).join('-')}`;
+  nodeIdCache.set(cacheKey, id);
+  return id;
 }
 
 /**
@@ -48,6 +58,9 @@ export function transformJsonToGraph(jsonString: string): { nodes: JsonNode[]; e
   if (!ast) {
     return { nodes: [], edges: [] };
   }
+
+  // Clear cache for fresh parsing
+  nodeIdCache.clear();
 
   const nodes: JsonNode[] = [];
   const edges: JsonEdge[] = [];

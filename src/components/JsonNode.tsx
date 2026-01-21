@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useCallback, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { JsonNodeData } from '../types';
 import { getThemeColors } from '../utils/theme';
@@ -10,16 +10,23 @@ interface JsonNodeProps {
 
 export const JsonNode = memo<JsonNodeProps>(({ data, selected }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const effectiveTheme = data.effectiveTheme === 'dark';
-  const colors = getThemeColors(effectiveTheme);
+
+  // Memoize theme calculations
+  const colors = useMemo(
+    () => getThemeColors(data.effectiveTheme === 'dark'),
+    [data.effectiveTheme]
+  );
   const typeColors = colors.nodeColors[data.nodeType];
 
   // Check if node is collapsible (object or array with children)
-  const isCollapsible = data.childCount !== undefined && data.childCount > 0;
+  const isCollapsible = useMemo(
+    () => data.childCount !== undefined && data.childCount > 0,
+    [data.childCount]
+  );
   const isCollapsed = data.collapsed;
 
-  // Determine node content based on type
-  const getNodeContent = () => {
+  // Memoize node content
+  const nodeContent = useMemo(() => {
     if (data.value) {
       // Primitive type - show value
       return (
@@ -41,25 +48,26 @@ export const JsonNode = memo<JsonNodeProps>(({ data, selected }) => {
       );
     }
     return <span className="font-semibold">{data.label}</span>;
-  };
+  }, [data.label, data.value, data.childCount, data.nodeType]);
 
-  // Handle collapse toggle
-  const handleCollapseToggle = (e: React.MouseEvent) => {
+  // Memoize event handlers
+  const handleCollapseToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    // Will be handled by parent via event bubbling or callback
     const event = new CustomEvent('node-collapse-toggle', {
       detail: { path: data.path },
       bubbles: true,
     });
     (e.currentTarget as HTMLElement).dispatchEvent(event);
-  };
+  }, [data.path]);
 
-  // Handle double-click on node body
-  const handleDoubleClick = (e: React.MouseEvent) => {
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     if (isCollapsible) {
       handleCollapseToggle(e);
     }
-  };
+  }, [isCollapsible, handleCollapseToggle]);
+
+  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
   return (
     <div
@@ -77,8 +85,8 @@ export const JsonNode = memo<JsonNodeProps>(({ data, selected }) => {
         maxWidth: '300px',
       }}
       onDoubleClick={handleDoubleClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Input handle (left) */}
       <Handle
@@ -113,7 +121,7 @@ export const JsonNode = memo<JsonNodeProps>(({ data, selected }) => {
         )}
 
         {/* Node content */}
-        <div className="flex-1">{getNodeContent()}</div>
+        <div className="flex-1">{nodeContent}</div>
       </div>
 
       {/* Output handle (right) */}
