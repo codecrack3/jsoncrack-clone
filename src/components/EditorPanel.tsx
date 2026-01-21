@@ -1,6 +1,7 @@
 import { memo, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { useJsonStore } from '../stores/useJsonStore';
+import { getSizeCategory } from '../utils/storage';
 import { DEBOUNCE_CONFIG } from '../types';
 
 interface EditorPanelProps {
@@ -12,9 +13,17 @@ export const EditorPanel = memo<EditorPanelProps>(({ onValidationMarkers }) => {
 
   useEffect(() => {
     // Save to localStorage whenever JSON changes
+    const sizeCategory = getSizeCategory(json);
+    const debounceTime =
+      sizeCategory === 'small'
+        ? DEBOUNCE_CONFIG.TYPING_DEBOUNCE_SMALL
+        : sizeCategory === 'medium'
+          ? DEBOUNCE_CONFIG.TYPING_DEBOUNCE_MEDIUM
+          : DEBOUNCE_CONFIG.TYPING_DEBOUNCE_LARGE;
+
     const timer = setTimeout(() => {
       saveToStorage();
-    }, DEBOUNCE_CONFIG.TYPING_DEBOUNCE);
+    }, debounceTime);
 
     return () => clearTimeout(timer);
   }, [json, saveToStorage]);

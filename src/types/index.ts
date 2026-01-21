@@ -97,13 +97,16 @@ export const DAGRE_CONFIG = {
 /**
  * Size limits
  */
-export const MAX_SIZE_BYTES = 300 * 1024; // 300KB
+export const WARNING_SIZE_BYTES = 300 * 1024; // 300KB - show warning
+export const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB - hard limit
 
 /**
  * Debounce timing configuration
  */
 export const DEBOUNCE_CONFIG = {
-  TYPING_DEBOUNCE: 300,
+  TYPING_DEBOUNCE_SMALL: 300,
+  TYPING_DEBOUNCE_MEDIUM: 500,
+  TYPING_DEBOUNCE_LARGE: 800,
   VALIDATION_DEBOUNCE: 150,
   LAYOUT_DEBOUNCE: 100,
 } as const;
