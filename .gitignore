@@ -37,3 +37,4 @@ lerna-debug.log*
 .ralph
 .serena
 .sop
+ralph.yml
