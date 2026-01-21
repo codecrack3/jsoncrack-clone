@@ -32,3 +32,4 @@
 {"payload":"status: recovery, reason: previous iteration did not publish an event","topic":"task.resume","ts":"2026-01-21T04:59:41.511133+00:00"}
 {"payload":{"build":"passing","bundle":"142KB_gzipped","status":"all_tasks_complete","tasks_complete":28},"topic":"loop.complete","ts":"2026-01-21T05:00:06.686155+00:00"}
 {"payload":{"all_tasks":"done","build":"passing","bundle_kb":"142.63","loop":"closed","status":"complete"},"topic":"task.resume.handled","ts":"2026-01-21T05:00:51.564898+00:00"}
+{"payload":{"all_tasks":"done","build":"passing","bundle_kb":"125.4_main_53_worker","fr":"12/12","loop":"closed","nfr":"4/4","status":"complete","worker_implemented":true},"topic":"task.loop_complete","ts":"2026-01-21T05:02:22.904729+00:00"}
