@@ -32,9 +32,8 @@ lerna-debug.log*
 .env.local
 .env.*.local
 
-# Agent/Ralph
+# Agent/Ralph/Serena/SOP
 .agent
 .ralph
-
-# SOP
-.sop/planning
+.serena
+.sop
