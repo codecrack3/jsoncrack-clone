@@ -1,0 +1,109 @@
+import { useEffect, useState, useCallback } from 'react';
+import { Allotment } from 'allotment';
+import 'allotment/dist/style.css';
+import { useJsonStore } from './stores/useJsonStore';
+import { useGraphStore } from './stores/useGraphStore';
+import { useConfigStore } from './stores/useConfigStore';
+import { Toolbar } from './components/Toolbar';
+import { EditorPanel } from './components/EditorPanel';
+import { GraphPanel } from './components/GraphPanel';
+import { SizeWarning } from './components/SizeWarning';
+import { transformJsonToGraph, validateJson } from './utils/parser';
+import { applyLayout } from './utils/layout';
+import { createValidationMarkers } from './utils/validation';
+import { checkSizeLimit } from './utils/storage';
+import { DEBOUNCE_CONFIG } from './types';
+
+function App() {
+  const { json, setIsValid, setError, loadFromStorage } = useJsonStore();
+  const { setGraph, reset: resetGraph } = useGraphStore();
+  const { effectiveTheme, applyTheme } = useConfigStore();
+  const [jsonSize, setJsonSize] = useState(0);
+
+  // Initialize theme and load saved data
+  useEffect(() => {
+    applyTheme();
+    loadFromStorage();
+  }, [applyTheme, loadFromStorage]);
+
+  // Update graph when JSON changes (debounced)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      updateGraph();
+    }, DEBOUNCE_CONFIG.TYPING_DEBOUNCE);
+
+    return () => clearTimeout(handler);
+  }, [json]);
+
+  // Listen for system theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      applyTheme();
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [applyTheme]);
+
+  const updateGraph = useCallback(() => {
+    // Check size limit
+    const sizeBytes = new Blob([json]).size;
+    setJsonSize(sizeBytes);
+
+    if (!checkSizeLimit(json)) {
+      resetGraph();
+      return;
+    }
+
+    // Validate JSON
+    const errors = validateJson(json);
+
+    if (errors.length > 0) {
+      // Invalid JSON - show error markers, keep last valid graph
+      createValidationMarkers(errors, json);
+      setIsValid(false);
+      setError(errors[0].error.toString());
+      return;
+    }
+
+    // Valid JSON - clear errors, update graph
+    setIsValid(true);
+    setError(null);
+
+    // Transform JSON to graph
+    const { nodes, edges } = transformJsonToGraph(json);
+
+    // Apply layout
+    const layoutedNodes = applyLayout(nodes, edges);
+
+    // Update graph store
+    setGraph(layoutedNodes, edges);
+  }, [json, resetGraph, setGraph, setIsValid, setError]);
+
+  const handleValidationMarkers = useCallback((_markers: unknown[]) => {
+    // Monaco's onValidate provides markers, but we also validate ourselves
+    // Combine both sources if needed
+  }, []);
+
+  return (
+    <div className="h-screen w-screen flex flex-col bg-background text-text">
+      <Toolbar />
+
+      <div className="flex-1 relative">
+        <SizeWarning size={jsonSize} />
+
+        <Allotment defaultSizes={[40, 60]}>
+          <Allotment.Pane minSize={200}>
+            <EditorPanel onValidationMarkers={handleValidationMarkers} />
+          </Allotment.Pane>
+          <Allotment.Pane minSize={400}>
+            <GraphPanel effectiveTheme={effectiveTheme} />
+          </Allotment.Pane>
+        </Allotment>
+      </div>
+    </div>
+  );
+}
+
+export default App;
