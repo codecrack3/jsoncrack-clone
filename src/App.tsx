@@ -143,7 +143,7 @@ function App() {
     };
   }, [toggleCollapse]);
 
-  const handleValidationMarkers = useCallback((_markers: unknown[]) => {
+  const handleValidationMarkers = useCallback(() => {
     // Monaco's onValidate provides markers, but we also validate ourselves
     // Combine both sources if needed
   }, []);
