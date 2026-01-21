@@ -32,9 +32,9 @@ lerna-debug.log*
 .env.local
 .env.*.local
 
-# Ralph
-.agent/events.jsonl
-.ralph/current-events
+# Agent/Ralph
+.agent
+.ralph
 
 # SOP
-.sop
+.sop/planning

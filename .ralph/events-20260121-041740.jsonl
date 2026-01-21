@@ -1,2 +1,0 @@
-{"payload":"Large JSON support implemented: 5MB limit (was 300KB), size-based debouncing, two-tier warnings","topic":"task.done","ts":"2026-01-21T04:19:55.636857+00:00"}
-{"payload":"feature: large JSON support up to 5MB, status: complete, bundle: 142KB gzipped","topic":"enhancement.complete","ts":"2026-01-21T04:21:54.610015+00:00"}
