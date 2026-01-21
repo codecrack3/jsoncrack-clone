@@ -12,11 +12,11 @@ import { transformJsonToGraph, validateJson } from './utils/parser';
 import { applyLayout } from './utils/layout';
 import { createValidationMarkers } from './utils/validation';
 import { checkSizeLimit } from './utils/storage';
-import { DEBOUNCE_CONFIG } from './types';
+import { DEBOUNCE_CONFIG, JsonPath } from './types';
 
 function App() {
   const { json, setIsValid, setError, loadFromStorage } = useJsonStore();
-  const { setGraph, reset: resetGraph } = useGraphStore();
+  const { setGraph, reset: resetGraph, toggleCollapse } = useGraphStore();
   const { effectiveTheme, applyTheme } = useConfigStore();
   const [jsonSize, setJsonSize] = useState(0);
 
@@ -45,6 +45,29 @@ function App() {
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [applyTheme]);
+
+  // Listen for collapse toggle events from nodes
+  useEffect(() => {
+    const handleCollapseToggle = (e: Event) => {
+      const customEvent = e as CustomEvent<{ path: JsonPath }>;
+      if (customEvent.detail && customEvent.detail.path) {
+        // Generate node ID from path
+        const path = customEvent.detail.path;
+        const nodeId =
+          path.length === 0
+            ? 'node-root'
+            : `node-${path.map((p) => String(p).replace(/[^a-zA-Z0-9]/g, '_')).join('-')}`;
+        toggleCollapse(nodeId);
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('node-collapse-toggle', handleCollapseToggle);
+
+    return () => {
+      document.removeEventListener('node-collapse-toggle', handleCollapseToggle);
+    };
+  }, [toggleCollapse]);
 
   const updateGraph = useCallback(() => {
     // Check size limit
