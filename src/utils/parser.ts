@@ -53,12 +53,7 @@ function calculateNodeWidth(label: string, value?: string): number {
 /**
  * Transform JSON AST to graph nodes and edges
  */
-export function transformJsonToGraph(jsonString: string): { nodes: JsonNode[]; edges: JsonEdge[] } {
-  const ast = parseTree(jsonString);
-  if (!ast) {
-    return { nodes: [], edges: [] };
-  }
-
+export function transformAstToGraph(ast: ASTNode): { nodes: JsonNode[]; edges: JsonEdge[] } {
   // Clear cache for fresh parsing
   nodeIdCache.clear();
 
@@ -144,6 +139,18 @@ export function transformJsonToGraph(jsonString: string): { nodes: JsonNode[]; e
   traverse(ast, null, null, []);
 
   return { nodes, edges };
+}
+
+/**
+ * Transform JSON string to graph nodes and edges
+ */
+export function transformJsonToGraph(jsonString: string): { nodes: JsonNode[]; edges: JsonEdge[] } {
+  const ast = parseTree(jsonString);
+  if (!ast) {
+    return { nodes: [], edges: [] };
+  }
+
+  return transformAstToGraph(ast);
 }
 
 /**
